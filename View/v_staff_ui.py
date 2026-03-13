@@ -691,8 +691,6 @@ class ServiceDialog(QDialog):
                 label += f" ({svc['note']})"
             cb   = QCheckBox(label); cb.setStyleSheet("font-size: 14px; padding: 5px;")
             spin = QSpinBox(); spin.setRange(1, 10); spin.setEnabled(False); spin.setFixedWidth(60)
-            if not svc['available']:
-                cb.setDisabled(True)
             cb.toggled.connect(spin.setEnabled)
             row.addWidget(cb); row.addWidget(spin)
             l.addLayout(row)

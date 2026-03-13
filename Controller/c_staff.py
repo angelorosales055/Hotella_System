@@ -167,7 +167,7 @@ class StaffController:
 
             c.setFillColor(_WHITE)
             c.setFont("Helvetica", 7.5)
-            c.drawCentredString(_RW / 2, _RH - 21*mm, "Resort & Hotel  |  Davao City, Philippines")
+            c.drawCentredString(_RW / 2, _RH - 21*mm, "Hotel & Services  |  Davao City, Philippines")
 
             c.setFillColor(_GOLD)
             c.setFont("Helvetica-Bold", 9)

@@ -105,10 +105,23 @@ class AdminHome(QWidget):
         self.layout.setContentsMargins(30, 30, 30, 30)
         self.layout.setSpacing(20)
         self.setLayout(self.layout)
+
+        self.load_charts_module()  # Load matplotlib safely
+
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_clock)
         self.timer.start(1000)
         self.refresh_data()
+
+    def load_charts_module(self):
+        try:
+            from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FC
+            from matplotlib.figure import Figure as Fig
+            self.FigureCanvas = FC
+            self.Figure = Fig
+            self.plt_available = True
+        except ImportError:
+            self.plt_available = False
 
     def refresh_data(self):
         while self.layout.count():
@@ -118,9 +131,13 @@ class AdminHome(QWidget):
 
         self.create_header()
         self.create_stats()
+
+        # 🟢 NEW: Add Line Trend to Dashboard
+        if getattr(self, 'plt_available', False):
+            self.create_trend_chart()
+
         self.layout.addStretch()
 
-        # 🟢 NEW: "All rights reserved" Footnote at the bottom of the dashboard
         lbl_footer = QLabel("© 2026 Hotella Management System. All rights reserved.")
         lbl_footer.setStyleSheet("color: #95A5A6; font-size: 12px; font-weight: bold;")
         lbl_footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -134,7 +151,6 @@ class AdminHome(QWidget):
         lbl_title = QLabel("Hotella Dashboard")
         lbl_title.setStyleSheet("font-size: 28px; font-weight: 900; color: #2C3E50; background: transparent;")
         h.addWidget(lbl_title)
-
         h.addStretch()
 
         self.time_lbl = QLabel()
@@ -194,6 +210,40 @@ class AdminHome(QWidget):
             gl.addWidget(card, i // 2, i % 2)
 
         self.layout.addLayout(gl)
+
+    # 🟢 NEW: Renders a line chart for the dashboard
+    def create_trend_chart(self):
+        frame = QFrame()
+        frame.setStyleSheet("background: white; border-radius: 10px; border: 1px solid #BDC3C7;")
+        frame.setMinimumHeight(320)
+        fl = QVBoxLayout(frame)
+
+        lbl = QLabel(f"Revenue Trend ({datetime.now().year})")
+        lbl.setStyleSheet(
+            "font-size: 16px; font-weight: bold; color: #2C3E50; border: none; padding-left: 10px; padding-top: 10px;")
+        fl.addWidget(lbl)
+
+        fig = self.Figure(figsize=(8, 2.5), dpi=100)
+        ax = fig.add_subplot(111)
+
+        # Fetch data using the existing backend method
+        data = self.ctrl.get_monthly_revenue(datetime.now().year)
+        x_vals = [d['month_name'] for d in data]
+        y_vals = [d['total_rev'] for d in data]
+
+        ax.plot(x_vals, y_vals, marker='o', linestyle='-', color='#3498DB', linewidth=2.5, markersize=7)
+        ax.fill_between(x_vals, y_vals, alpha=0.1, color='#3498DB')
+
+        ax.set_ylabel("Total Revenue (₱)")
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        fig.tight_layout()
+
+        canvas = self.FigureCanvas(fig)
+        fl.addWidget(canvas)
+
+        self.layout.addWidget(frame)
 
 
 class AdminManagement(QWidget):
@@ -1068,6 +1118,7 @@ class AdminSummary(QWidget):
         year = self.cb_year.currentText()
         month_idx = self.cb_month.currentData()
         if not year: return
+
         if month_idx:
             import calendar
             last = calendar.monthrange(int(year), int(month_idx))[1]
@@ -1080,16 +1131,29 @@ class AdminSummary(QWidget):
         data = self.ctrl.get_analytics(s_date, e_date)
         total = data['rev_room'] + data['rev_svc']
         self.update_financial_banner(data['rev_room'], data['rev_svc'], total)
-        while self.chart_grid.count(): self.chart_grid.takeAt(0).widget().deleteLater()
+
+        while self.chart_grid.count():
+            self.chart_grid.takeAt(0).widget().deleteLater()
+
+        # 1. Pie Chart
         f1 = self.frame("Revenue Breakdown")
         self.pie(f1, data['rev_room'], data['rev_svc'])
         self.chart_grid.addWidget(f1, 0, 0)
+
+        # 2. Rooms Bar Chart
         f2 = self.frame("Most Used Room Types")
         self.bar_rooms(f2, data['room_counts'])
         self.chart_grid.addWidget(f2, 0, 1)
-        f3 = self.frame("Top Services Offered")
-        self.bar_services(f3, data['svc_counts'])
-        self.chart_grid.addWidget(f3, 1, 0, 1, 2)
+
+        # 🟢 NEW: 3. Dynamic Line Chart
+        f3 = self.frame("Revenue Trend Over Time")
+        self.line_trend(f3, year, month_idx)
+        self.chart_grid.addWidget(f3, 1, 0, 1, 2)  # Spans both columns
+
+        # 4. Services Bar Chart
+        f4 = self.frame("Top Services Offered")
+        self.bar_services(f4, data['svc_counts'])
+        self.chart_grid.addWidget(f4, 2, 0, 1, 2)  # Spans both columns
 
     def export_pdf(self):
         # 🟢 SAFETY NET: Instead of crashing on clicking Export, pop up a clean error box!
@@ -1126,7 +1190,39 @@ class AdminSummary(QWidget):
         if r == 0 and s == 0: f.layout().addWidget(QLabel("No Revenue Data")); return
         fig = self.Figure(figsize=(4, 4), dpi=100)
         ax = fig.add_subplot(111)
-        ax.pie([r, s], labels=['Room Rev', 'Svc Rev'], autopct='%1.1f%%', colors=['#2ECC71', '#F1C40F'])
+
+        # 🟢 UPDATED: Changed 'Room Rev' and 'Svc Rev' to their proper names
+        ax.pie([r, s], labels=['Room ', 'Service '], autopct='%1.1f%%', colors=['#2ECC71', '#F1C40F'])
+
+        c = self.FigureCanvas(fig)
+        f.layout().addWidget(c)
+        c.draw()
+
+    # 🟢 NEW: Handles both daily (month view) and monthly (annual view)
+    def line_trend(self, f, year, month_idx):
+        fig = self.Figure(figsize=(8, 3.5), dpi=100)
+        ax = fig.add_subplot(111)
+
+        if month_idx:
+            # Daily view for a specific month
+            data = self.ctrl.get_daily_revenue(year, int(month_idx))
+            x_vals = [d['day'] for d in data]
+            y_vals = [d['total_rev'] for d in data]
+            ax.set_xlabel("Day of Month")
+        else:
+            # Monthly view for the whole year
+            data = self.ctrl.get_monthly_revenue(year)
+            x_vals = [d['month_name'] for d in data]
+            y_vals = [d['total_rev'] for d in data]
+
+        ax.plot(x_vals, y_vals, marker='o', color='#E67E22', linewidth=2.5)
+        ax.fill_between(x_vals, y_vals, alpha=0.1, color='#E67E22')
+        ax.set_ylabel("Revenue (₱)")
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        fig.tight_layout()
+
         c = self.FigureCanvas(fig)
         f.layout().addWidget(c)
         c.draw()
@@ -1138,6 +1234,13 @@ class AdminSummary(QWidget):
         ax.bar(d.keys(), d.values(), color='#3498DB')
         ax.set_ylabel("Bookings Count")
         if self.MaxNLocator: ax.yaxis.set_major_locator(self.MaxNLocator(integer=True))
+
+        # 🟢 Cleaned up design
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        fig.tight_layout()
+
         c = self.FigureCanvas(fig)
         f.layout().addWidget(c)
         c.draw()
@@ -1146,9 +1249,23 @@ class AdminSummary(QWidget):
         if not d: f.layout().addWidget(QLabel("No Data")); return
         fig = self.Figure(figsize=(8, 4), dpi=100)
         ax = fig.add_subplot(111)
-        ax.bar(d.keys(), d.values(), color='#9B59B6')
+
+        # 🟢 Sort items from highest to lowest sales
+        sorted_d = dict(sorted(d.items(), key=lambda item: item[1], reverse=True))
+
+        ax.bar(sorted_d.keys(), sorted_d.values(), color='#9B59B6')
         ax.set_ylabel("Quantity Sold")
         if self.MaxNLocator: ax.yaxis.set_major_locator(self.MaxNLocator(integer=True))
+
+        # 🟢 Fix overlapping labels by rotating them
+        ax.tick_params(axis='x', rotation=25, labelsize=9)
+
+        # 🟢 Cleaned up design
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        fig.tight_layout()
+
         c = self.FigureCanvas(fig)
         f.layout().addWidget(c)
         c.draw()

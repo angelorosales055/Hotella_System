@@ -1,7 +1,7 @@
 import sys
 from datetime import datetime
 
-# Try to import MySQL connector
+# Try to import MySQL connector2
 try:
     import mysql.connector
 except ImportError:

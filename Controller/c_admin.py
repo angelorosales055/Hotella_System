@@ -108,8 +108,11 @@ class AdminController:
         pay_filt = [p for p in payments if s_date <= str(p[7]).split(' ')[0] <= e_date]
         book_filt = [b for b in bookings if s_date <= str(b[1]) <= e_date]
         svc_filt = [s for s in services if s[1] and s_date <= str(s[1]).split(' ')[0] <= e_date]
+
         rev_room = sum(p[3] for p in pay_filt)
         rev_svc = sum(p[4] for p in pay_filt)
+
+        # -- Rooms counting logic --
         room_counts = {}
         unique_types = set(r[1] for r in all_rooms_data if r[1])
         if not unique_types: unique_types = {"Single", "Double", "Queen", "King", "Suite"}
@@ -117,15 +120,27 @@ class AdminController:
         for b in book_filt:
             rtype = b[0] or "Unknown"
             room_counts[rtype] = room_counts.get(rtype, 0) + 1
-        svc_counts = {}
-        history_services = set(s[0] for s in services if s[0])
-        default_services = {"Breakfast", "Lunch Set", "Dinner", "Massage", "Laundry", "Transport", "Extra Bed", "Spa"}
-        all_known = history_services.union(default_services)
-        for name in all_known: svc_counts[name] = 0
+
+        # -- Services counting logic (🟢 UPDATED) --
+        # Define ONLY the official services offered by the hotel
+        official_services = {
+            "Breakfast Set",
+            "Lunch Set",
+            "Dinner Set",
+            "Laundry (Per kg)",
+            "Cleaning Service"
+        }
+
+        # Initialize the dictionary so only official services appear on the chart
+        svc_counts = {name: 0 for name in official_services}
+
         for s in svc_filt:
             sname = s[0] or "Misc"
-            qty = s[3] if len(s) > 3 else 1
-            svc_counts[sname] = svc_counts.get(sname, 0) + qty
+            # Only count the service if it matches an official hotel offering
+            if sname in official_services:
+                qty = s[3] if len(s) > 3 else 1
+                svc_counts[sname] += qty
+
         return {'rev_room': rev_room, 'rev_svc': rev_svc, 'room_counts': room_counts, 'svc_counts': svc_counts}
 
     # 🟢 FIX: Added the options parameter to accept instructions from the checkbox wizard
@@ -211,7 +226,6 @@ class AdminController:
                 <h3>{period_label}</h3>
             </center>
 
-            <!-- ── Report Metadata ── -->
             <table class="meta-table" width="100%" cellpadding="0" cellspacing="0"
                    style="border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; background: #fafafa;">
                 <tr>
@@ -234,7 +248,6 @@ class AdminController:
                 </tr>
             </table>
 
-            <!-- ── Analytics Snapshot ── -->
             <h2>Analytics Snapshot</h2>
             <table class="analytics-grid" cellpadding="0" cellspacing="0">
                 <tr>
@@ -432,6 +445,7 @@ class AdminController:
 
         # Get daily revenue for specific month
         start_date = f"{year}-{month:02d}-01"
+        import calendar
         last_day = calendar.monthrange(int(year), int(month))[1]
         end_date = f"{year}-{month:02d}-{last_day}"
 
@@ -440,12 +454,14 @@ class AdminController:
             # Get daily revenue breakdown
             sql = """
                   SELECT
-                      DATE (date_paid) as day, SUM (room_total) as room_rev, SUM (service_total) as service_rev, COUNT (DISTINCT booking_id) as bookings
+                      DATE(date_paid) as day, 
+                      SUM(room_total) as room_rev, 
+                      SUM(service_total) as service_rev, 
+                      COUNT(DISTINCT booking_id) as bookings
                   FROM payments
-                  WHERE DATE (date_paid) BETWEEN %s \
-                    AND %s
-                  GROUP BY DATE (date_paid)
-                  ORDER BY day \
+                  WHERE DATE(date_paid) BETWEEN %s AND %s
+                  GROUP BY DATE(date_paid)
+                  ORDER BY day
                   """
             c.execute(sql, (start_date, end_date))
             results = c.fetchall()
@@ -480,18 +496,18 @@ class AdminController:
         c = self.model.db.get_cursor()
         try:
             monthly_data = []
+            import calendar
             for month in range(1, 13):
                 start = f"{year}-{month:02d}-01"
                 last_day = calendar.monthrange(int(year), month)[1]
                 end = f"{year}-{month:02d}-{last_day}"
 
                 sql = """
-                      SELECT COALESCE(SUM(room_total), 0)    as room_rev, \
-                             COALESCE(SUM(service_total), 0) as service_rev, \
-                             COUNT(DISTINCT booking_id)      as bookings
+                      SELECT COALESCE(SUM(room_total), 0) as room_rev,
+                             COALESCE(SUM(service_total), 0) as service_rev,
+                             COUNT(DISTINCT booking_id) as bookings
                       FROM payments
-                      WHERE DATE (date_paid) BETWEEN %s \
-                        AND %s \
+                      WHERE DATE(date_paid) BETWEEN %s AND %s
                       """
                 c.execute(sql, (start, end))
                 row = c.fetchone()

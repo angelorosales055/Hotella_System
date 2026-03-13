@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGridLayout,
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, QDateEdit,
-                             QMessageBox, QDialog, QFormLayout, QLineEdit, QTabWidget, QAbstractItemView, QFileDialog,
+                             QMessageBox, QDialog, QFormLayout, QLineEdit, QTabWidget, QAbstractItemView,
                              QComboBox, QSpinBox, QScrollArea, QGroupBox, QCheckBox)
 from PyQt6.QtCore import Qt, QDate, QTimer, QTime, pyqtSignal
 from PyQt6.QtGui import QTextDocument
@@ -8,53 +8,27 @@ from PyQt6.QtPrintSupport import QPrinter
 from datetime import datetime
 import calendar
 
-# --- STYLES ---
+# ── Shared styles ─────────────────────────────────────────────────────────────
 TABLE_STYLE = """
-    QTableWidget { 
-        background-color: white; 
-        color: #2C3E50; 
-        border: 1px solid #BDC3C7; 
-        border-radius: 5px; 
-        gridline-color: #ECF0F1; 
-        font-size: 13px; 
+    QTableWidget {
+        background-color: white; color: #2C3E50;
+        border: 1px solid #BDC3C7; border-radius: 5px;
+        gridline-color: #ECF0F1; font-size: 13px;
     }
-    QHeaderView::section { 
-        background-color: #2C3E50; 
-        color: white; 
-        font-weight: bold; 
-        border: none; 
-        padding: 10px; 
-        font-size: 13px; 
+    QHeaderView::section {
+        background-color: #2C3E50; color: white;
+        font-weight: bold; border: none; padding: 10px; font-size: 13px;
     }
-    QTableWidget::item { 
-        padding: 5px; 
-    }
-    QTableWidget::item:hover { 
-        background-color: #EAFAF1; 
-        color: #2C3E50; 
-    }
-    QTableWidget::item:selected { 
-        background-color: #3498DB; 
-        color: white; 
-    }
+    QTableWidget::item { padding: 5px; }
+    QTableWidget::item:hover { background-color: #EAFAF1; color: #2C3E50; }
+    QTableWidget::item:selected { background-color: #3498DB; color: white; }
 """
 
-
-def make_table_readonly(table):
-    table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-    table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-    table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-    table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-
-
 INPUT_STYLE = """
-    QLineEdit, QComboBox, QSpinBox { 
-        padding: 8px; 
-        border: 1px solid #BDC3C7; 
-        border-radius: 5px; 
-        font-size: 13px; 
-        background-color: white; 
-        color: #2C3E50; 
+    QLineEdit, QComboBox, QSpinBox {
+        padding: 8px; border: 1px solid #BDC3C7;
+        border-radius: 5px; font-size: 13px;
+        background-color: white; color: #2C3E50;
     }
     QComboBox::drop-down { border: none; width: 20px; }
     QComboBox QAbstractItemView {
@@ -65,10 +39,10 @@ INPUT_STYLE = """
 """
 
 GROUP_STYLE = """
-    QGroupBox { 
-        font-weight: bold; border: 1px solid #BDC3C7; margin-top: 10px; 
+    QGroupBox {
+        font-weight: bold; border: 1px solid #BDC3C7; margin-top: 10px;
         color: #2C3E50; background-color: white; border-radius: 5px;
-    } 
+    }
     QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 5px; }
 """
 
@@ -80,6 +54,14 @@ MESSAGEBOX_STYLE = """
 """
 
 
+def make_table_readonly(table):
+    table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+    table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+    table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+    table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+
+# ── Clickable dashboard card ──────────────────────────────────────────────────
 class ClickableFrame(QFrame):
     clicked = pyqtSignal(str)
 
@@ -93,6 +75,7 @@ class ClickableFrame(QFrame):
         super().mousePressEvent(event)
 
 
+# ── Admin Home (Dashboard) ────────────────────────────────────────────────────
 class AdminHome(QWidget):
     switch_tab_signal = pyqtSignal(str)
 
@@ -106,7 +89,7 @@ class AdminHome(QWidget):
         self.layout.setSpacing(20)
         self.setLayout(self.layout)
 
-        self.load_charts_module()  # Load matplotlib safely
+        self.load_charts_module()
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_clock)
@@ -132,12 +115,10 @@ class AdminHome(QWidget):
         self.create_header()
         self.create_stats()
 
-        # 🟢 NEW: Add Line Trend to Dashboard
         if getattr(self, 'plt_available', False):
             self.create_trend_chart()
 
         self.layout.addStretch()
-
         lbl_footer = QLabel("© 2026 Hotella Management System. All rights reserved.")
         lbl_footer.setStyleSheet("color: #95A5A6; font-size: 12px; font-weight: bold;")
         lbl_footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -176,13 +157,14 @@ class AdminHome(QWidget):
         gl = QGridLayout()
         gl.setSpacing(20)
 
+        # Controller supplies all values; view only renders them
         stats = self.ctrl.get_dashboard_stats()
 
         cards_data = [
-            ("TOTAL BOOKINGS", stats.get('bookings', 0), "#3498DB", "bookings"),
-            (f"REVENUE ({stats.get('year')})", f"₱{stats.get('revenue', 0):,}", "#2ECC71", "analytics"),
-            ("TOTAL EMPLOYEES", stats.get('employees', 0), "#E67E22", "employees"),
-            ("TOTAL ROOMS", stats.get('rooms', 0), "#9B59B6", "rooms")
+            ("TOTAL BOOKINGS",            stats.get('bookings', 0),                 "#3498DB", "bookings"),
+            (f"REVENUE ({stats.get('year')})", f"₱{stats.get('revenue', 0):,}",    "#2ECC71", "analytics"),
+            ("TOTAL EMPLOYEES",           stats.get('employees', 0),                "#E67E22", "employees"),
+            ("TOTAL ROOMS",               stats.get('rooms', 0),                    "#9B59B6", "rooms"),
         ]
 
         for i, (label, value, color, c_type) in enumerate(cards_data):
@@ -195,8 +177,7 @@ class AdminHome(QWidget):
             cl.setContentsMargins(20, 20, 20, 20)
 
             lbl_title = QLabel(str(label))
-            lbl_title.setStyleSheet(
-                "font-size: 14px; font-weight: bold; background: transparent; color: rgba(255,255,255,0.9);")
+            lbl_title.setStyleSheet("font-size: 14px; font-weight: bold; background: transparent; color: rgba(255,255,255,0.9);")
             lbl_title.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
             lbl_title.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
@@ -211,7 +192,6 @@ class AdminHome(QWidget):
 
         self.layout.addLayout(gl)
 
-    # 🟢 NEW: Renders a line chart for the dashboard
     def create_trend_chart(self):
         frame = QFrame()
         frame.setStyleSheet("background: white; border-radius: 10px; border: 1px solid #BDC3C7;")
@@ -219,21 +199,19 @@ class AdminHome(QWidget):
         fl = QVBoxLayout(frame)
 
         lbl = QLabel(f"Revenue Trend ({datetime.now().year})")
-        lbl.setStyleSheet(
-            "font-size: 16px; font-weight: bold; color: #2C3E50; border: none; padding-left: 10px; padding-top: 10px;")
+        lbl.setStyleSheet("font-size: 16px; font-weight: bold; color: #2C3E50; border: none; padding-left: 10px; padding-top: 10px;")
         fl.addWidget(lbl)
 
         fig = self.Figure(figsize=(8, 2.5), dpi=100)
-        ax = fig.add_subplot(111)
+        ax  = fig.add_subplot(111)
 
-        # Fetch data using the existing backend method
-        data = self.ctrl.get_monthly_revenue(datetime.now().year)
+        # Controller provides ready-made data; view only plots
+        data   = self.ctrl.get_monthly_revenue(datetime.now().year)
         x_vals = [d['month_name'] for d in data]
-        y_vals = [d['total_rev'] for d in data]
+        y_vals = [d['total_rev']  for d in data]
 
         ax.plot(x_vals, y_vals, marker='o', linestyle='-', color='#3498DB', linewidth=2.5, markersize=7)
         ax.fill_between(x_vals, y_vals, alpha=0.1, color='#3498DB')
-
         ax.set_ylabel("Total Revenue (₱)")
         ax.grid(axis='y', linestyle='--', alpha=0.7)
         ax.spines['top'].set_visible(False)
@@ -242,10 +220,10 @@ class AdminHome(QWidget):
 
         canvas = self.FigureCanvas(fig)
         fl.addWidget(canvas)
-
         self.layout.addWidget(frame)
 
 
+# ── Admin Management ──────────────────────────────────────────────────────────
 class AdminManagement(QWidget):
     def __init__(self, ctrl):
         super().__init__()
@@ -257,7 +235,8 @@ class AdminManagement(QWidget):
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet("""
             QTabWidget::pane { border: 1px solid #BDC3C7; background: white; border-radius: 5px; }
-            QTabBar::tab { background: #E0E0E0; color: #555; padding: 10px 25px; font-weight: bold; border-top-left-radius: 5px; border-top-right-radius: 5px; margin-right: 2px; }
+            QTabBar::tab { background: #E0E0E0; color: #555; padding: 10px 25px; font-weight: bold;
+                           border-top-left-radius: 5px; border-top-right-radius: 5px; margin-right: 2px; }
             QTabBar::tab:selected { background: #2C3E50; color: white; border-bottom: 3px solid #FDB515; }
         """)
 
@@ -268,11 +247,10 @@ class AdminManagement(QWidget):
             RoomMaintenanceTab(ctrl),
             HistoryAndServicesTab(ctrl),
             PaymentReportTab(ctrl),
-            SystemLogsTab(ctrl)
+            SystemLogsTab(ctrl),
         ]
-
-        titles = ["Bookings", "Rooms", "Employees", "Maintenance", "History & Services", "Payments", "System Logs"]
-
+        titles = ["Bookings", "Rooms", "Employees", "Maintenance",
+                  "History & Services", "Payments", "System Logs"]
         for p, t in zip(self.pages, titles):
             self.tabs.addTab(p, t)
 
@@ -281,19 +259,16 @@ class AdminManagement(QWidget):
 
     def refresh_data(self):
         for p in self.pages:
-            if hasattr(p, 'load'): p.load()
+            if hasattr(p, 'load'):         p.load()
             if hasattr(p, 'refresh_data'): p.refresh_data()
 
     def navigate_to(self, tab_name):
-        map_name = {
-            "bookings": 0,
-            "rooms": 1,
-            "employees": 2
-        }
-        if tab_name in map_name:
-            self.tabs.setCurrentIndex(map_name[tab_name])
+        mapping = {"bookings": 0, "rooms": 1, "employees": 2}
+        if tab_name in mapping:
+            self.tabs.setCurrentIndex(mapping[tab_name])
 
 
+# ── Employees Tab ─────────────────────────────────────────────────────────────
 class EmployeesTab(QWidget):
     def __init__(self, ctrl):
         super().__init__()
@@ -312,7 +287,7 @@ class EmployeesTab(QWidget):
         fl = QVBoxLayout(gb_add)
         fl.setSpacing(10)
 
-        self.inp_name = QLineEdit(placeholderText="Full Name")
+        self.inp_name    = QLineEdit(placeholderText="Full Name")
         self.inp_name.setStyleSheet(INPUT_STYLE)
         self.inp_contact = QLineEdit(placeholderText="Contact Number")
         self.inp_contact.setStyleSheet(INPUT_STYLE)
@@ -342,8 +317,7 @@ class EmployeesTab(QWidget):
         self.gb_account.hide()
 
         btn_add = QPushButton("Add Employee")
-        btn_add.setStyleSheet(
-            "background: #27AE60; color: white; padding: 10px; font-weight: bold; border-radius: 5px;")
+        btn_add.setStyleSheet("background: #27AE60; color: white; padding: 10px; font-weight: bold; border-radius: 5px;")
         btn_add.clicked.connect(self.add_employee)
         fl.addWidget(btn_add)
         ctrl_panel.addWidget(gb_add)
@@ -351,8 +325,10 @@ class EmployeesTab(QWidget):
         gb_act = QGroupBox("Manage Status")
         gb_act.setStyleSheet(GROUP_STYLE)
         al = QVBoxLayout(gb_act)
-        lbl_hint = QLabel("To remove access, set status to Inactive.\nDo not delete employees to preserve history.",
-                          styleSheet="color: #7F8C8D; font-size: 11px; font-style: italic;")
+        lbl_hint = QLabel(
+            "To remove access, set status to Inactive.\nDo not delete employees to preserve history.",
+            styleSheet="color: #7F8C8D; font-size: 11px; font-style: italic;"
+        )
         lbl_hint.setWordWrap(True)
         al.addWidget(lbl_hint)
 
@@ -362,7 +338,6 @@ class EmployeesTab(QWidget):
         btn_inactive = QPushButton("Set Inactive")
         btn_inactive.setStyleSheet("background: #95A5A6; color: white; padding: 10px; font-weight: bold;")
         btn_inactive.clicked.connect(lambda: self.set_status("Inactive"))
-
         al.addWidget(btn_active)
         al.addWidget(btn_inactive)
         ctrl_panel.addWidget(gb_act)
@@ -391,51 +366,40 @@ class EmployeesTab(QWidget):
             self.t.setItem(r, 3, QTableWidgetItem(str(e[3])))
             status = str(e[4]) if e[4] else "Active"
             s_item = QTableWidgetItem(status)
-            if status == "Inactive":
-                s_item.setForeground(Qt.GlobalColor.red)
-            elif status == "Active":
-                s_item.setForeground(Qt.GlobalColor.green)
-            elif status == "Busy":
-                s_item.setForeground(Qt.GlobalColor.blue)
+            if status == "Inactive":   s_item.setForeground(Qt.GlobalColor.red)
+            elif status == "Active":   s_item.setForeground(Qt.GlobalColor.green)
+            elif status == "Busy":     s_item.setForeground(Qt.GlobalColor.blue)
             self.t.setItem(r, 4, s_item)
-            user_acc = e[5] if e[5] else "---"
-            self.t.setItem(r, 5, QTableWidgetItem(str(user_acc)))
+            self.t.setItem(r, 5, QTableWidgetItem(str(e[5]) if e[5] else "---"))
 
     def show_msg(self, title, txt, icon):
         msg = QMessageBox(self)
-        msg.setWindowTitle(title)
-        msg.setText(txt)
-        msg.setIcon(icon)
-        msg.setStyleSheet(MESSAGEBOX_STYLE)
-        msg.exec()
+        msg.setWindowTitle(title); msg.setText(txt); msg.setIcon(icon)
+        msg.setStyleSheet(MESSAGEBOX_STYLE); msg.exec()
 
     def add_employee(self):
-        name = self.inp_name.text()
-        role = self.cb_role.currentText()
-        contact = self.inp_contact.text()
-        user = self.inp_user.text()
-        pwd = self.inp_pass.text()
-        success, msg = self.ctrl.add_new_employee(name, role, contact, user, pwd)
+        success, msg = self.ctrl.add_new_employee(
+            self.inp_name.text(), self.cb_role.currentText(),
+            self.inp_contact.text(), self.inp_user.text(), self.inp_pass.text()
+        )
         if success:
             self.show_msg("Success", msg, QMessageBox.Icon.Information)
-            self.inp_name.clear()
-            self.inp_contact.clear()
-            self.inp_user.clear()
-            self.inp_pass.clear()
+            self.inp_name.clear(); self.inp_contact.clear()
+            self.inp_user.clear(); self.inp_pass.clear()
             self.load()
         else:
             self.show_msg("Error", msg, QMessageBox.Icon.Warning)
 
     def set_status(self, status):
         row = self.t.currentRow()
-        if row < 0: return self.show_msg("Error", "Select an employee.", QMessageBox.Icon.Warning)
+        if row < 0:
+            return self.show_msg("Error", "Select an employee.", QMessageBox.Icon.Warning)
         res, msg = self.ctrl.set_employee_status(self.t.item(row, 0).text(), status)
-        if res:
-            self.load()
-        else:
-            self.show_msg("Error", msg, QMessageBox.Icon.Warning)
+        if res: self.load()
+        else:   self.show_msg("Error", msg, QMessageBox.Icon.Warning)
 
 
+# ── Room Maintenance Tab ──────────────────────────────────────────────────────
 class RoomMaintenanceTab(QWidget):
     def __init__(self, ctrl):
         super().__init__()
@@ -444,12 +408,10 @@ class RoomMaintenanceTab(QWidget):
         self.t = QTableWidget(0, 3)
         self.t.setHorizontalHeaderLabels(["Room No", "Type", "Status"])
         self.t.setStyleSheet(TABLE_STYLE)
-
         make_table_readonly(self.t)
         self.t.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.t.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.t.cellClicked.connect(self.on_row_click)
-
         self.t.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.t, stretch=2)
 
@@ -463,8 +425,7 @@ class RoomMaintenanceTab(QWidget):
         btn_avail = QPushButton("Set Available")
         btn_avail.setStyleSheet("background: #27AE60; color: white; padding: 10px; font-weight: bold;")
         btn_avail.clicked.connect(lambda: self.set_status("Vacant"))
-        gl1.addWidget(btn_maint)
-        gl1.addWidget(btn_avail)
+        gl1.addWidget(btn_maint); gl1.addWidget(btn_avail)
         ctrl_panel.addWidget(gb1)
 
         gb2 = QGroupBox("Upgrade / Change Room")
@@ -475,12 +436,10 @@ class RoomMaintenanceTab(QWidget):
         self.cb_type.addItems(["Single", "Double", "Queen", "King", "Suite"])
         self.cb_type.setStyleSheet(INPUT_STYLE)
         gl2.addWidget(self.cb_type)
-
         btn_update = QPushButton("Update Type")
         btn_update.setStyleSheet("background: #3498DB; color: white; padding: 10px; font-weight: bold;")
         btn_update.clicked.connect(self.update_type)
         gl2.addWidget(btn_update)
-
         ctrl_panel.addWidget(gb2)
         ctrl_panel.addStretch()
         layout.addLayout(ctrl_panel, stretch=1)
@@ -506,33 +465,25 @@ class RoomMaintenanceTab(QWidget):
 
     def show_message(self, title, text, icon):
         msg = QMessageBox(self)
-        msg.setWindowTitle(title)
-        msg.setText(text)
-        msg.setIcon(icon)
-        msg.setStyleSheet(MESSAGEBOX_STYLE)
-        msg.exec()
+        msg.setWindowTitle(title); msg.setText(text); msg.setIcon(icon)
+        msg.setStyleSheet(MESSAGEBOX_STYLE); msg.exec()
 
     def set_status(self, status):
-        if not self.selected_room: return self.show_message("Error", "Select a room from the table first.",
-                                                            QMessageBox.Icon.Warning)
+        if not self.selected_room:
+            return self.show_message("Error", "Select a room from the table first.", QMessageBox.Icon.Warning)
         s, m = self.ctrl.set_room_status(self.selected_room, status)
-        if s:
-            self.show_message("Success", m, QMessageBox.Icon.Information)
-            self.load()
-        else:
-            self.show_message("Blocked", m, QMessageBox.Icon.Warning)
+        if s: self.show_message("Success", m, QMessageBox.Icon.Information); self.load()
+        else: self.show_message("Blocked", m, QMessageBox.Icon.Warning)
 
     def update_type(self):
-        if not self.selected_room: return self.show_message("Error", "Select a room from the table first.",
-                                                            QMessageBox.Icon.Warning)
+        if not self.selected_room:
+            return self.show_message("Error", "Select a room from the table first.", QMessageBox.Icon.Warning)
         s, m = self.ctrl.change_room_type(self.selected_room, self.cb_type.currentText())
-        if s:
-            self.show_message("Success", m, QMessageBox.Icon.Information)
-            self.load()
-        else:
-            self.show_message("Blocked", m, QMessageBox.Icon.Warning)
+        if s: self.show_message("Success", m, QMessageBox.Icon.Information); self.load()
+        else: self.show_message("Blocked", m, QMessageBox.Icon.Warning)
 
 
+# ── Booking Tab ───────────────────────────────────────────────────────────────
 class BookingTab(QWidget):
     def __init__(self, ctrl):
         super().__init__()
@@ -552,9 +503,11 @@ class BookingTab(QWidget):
             r = self.t.rowCount()
             self.t.insertRow(r)
             self.t.setItem(r, 0, QTableWidgetItem(f"B{b[0]:05d}"))
-            for i in range(1, 7): self.t.setItem(r, i, QTableWidgetItem(str(b[i])))
+            for i in range(1, 7):
+                self.t.setItem(r, i, QTableWidgetItem(str(b[i])))
 
 
+# ── Room Tab ──────────────────────────────────────────────────────────────────
 class RoomTab(QWidget):
     def __init__(self, ctrl):
         super().__init__()
@@ -576,27 +529,27 @@ class RoomTab(QWidget):
         for r in self.ctrl.get_all_rooms():
             row = self.t.rowCount()
             self.t.insertRow(row)
-            [self.t.setItem(row, i, QTableWidgetItem(str(r[i]))) for i in range(3)]
+            for i in range(3): self.t.setItem(row, i, QTableWidgetItem(str(r[i])))
 
     def add(self):
         d = QDialog(self)
         f = QFormLayout(d)
-        n = QLineEdit()
-        de = QLineEdit()
-        s = QLineEdit("Vacant")
-        n.setStyleSheet(INPUT_STYLE)
-        de.setStyleSheet(INPUT_STYLE)
-        s.setStyleSheet(INPUT_STYLE)
-        f.addRow("No", n)
-        f.addRow("Desc", de)
-        f.addRow("Stat", s)
+        n = QLineEdit(); de = QLineEdit(); s = QLineEdit("Vacant")
+        for w in (n, de, s): w.setStyleSheet(INPUT_STYLE)
+        f.addRow("No", n); f.addRow("Desc", de); f.addRow("Stat", s)
         b = QPushButton("Save")
         b.clicked.connect(lambda: [self.ctrl.save_room(True, [n.text(), de.text(), s.text()]), d.accept(), self.load()])
         f.addRow(b)
         d.exec()
 
 
+# ── System Logs Tab ───────────────────────────────────────────────────────────
 class SystemLogsTab(QWidget):
+    """
+    Purely renders the unified log data returned by the controller.
+    All merging / sorting logic was moved to AdminController.get_unified_system_logs().
+    """
+
     def __init__(self, ctrl):
         super().__init__()
         self.ctrl = ctrl
@@ -604,13 +557,15 @@ class SystemLogsTab(QWidget):
 
         btn_refresh = QPushButton("Refresh Logs")
         btn_refresh.setStyleSheet(
-            "background: #2C3E50; color: white; padding: 8px; border-radius: 5px; font-weight: bold; margin-bottom: 10px;")
+            "background: #2C3E50; color: white; padding: 8px; border-radius: 5px; font-weight: bold; margin-bottom: 10px;"
+        )
         btn_refresh.clicked.connect(self.load)
         self.layout().addWidget(btn_refresh)
 
         self.t = QTableWidget(0, 5)
         self.t.setHorizontalHeaderLabels(
-            ["Booking ID", "Target (Guest/Room)", "Action Performed", "Performed By", "Timestamp"])
+            ["Booking ID", "Target (Guest/Room)", "Action Performed", "Performed By", "Timestamp"]
+        )
         self.t.setStyleSheet(TABLE_STYLE)
         make_table_readonly(self.t)
         self.t.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -619,90 +574,19 @@ class SystemLogsTab(QWidget):
 
     def load(self):
         self.t.setRowCount(0)
-
-        # 🟢 SAFETY NET: Prevent crash if get_activity_logs is broken
         try:
-            raw_logs = self.ctrl.get_activity_logs() or []
-        except Exception:
-            raw_logs = []
-
-        unified_logs = []
-
-        for log in raw_logs:
-            unified_logs.append({
-                'bid': log[1],
-                'target': str(log[2]),
-                'action': str(log[3]),
-                'staff': str(log[5]) if len(log) > 5 and log[5] else "System Admin",
-                'time': str(log[4])
-            })
-
-        # 🟢 SAFETY NET: Catch missing history function
-        try:
-            services = self.ctrl.get_all_services() or []
-            history = self.ctrl.get_all_room_history() or []
-
-            guest_map = {}
-            staff_map = {}
-            for h in history:
-                guest_map[h[1]] = str(h[2])
-                staff_map[h[1]] = str(h[6]) if len(h) > 6 else "System Admin"
-
-            emp_map = {}
-            try:
-                for e in self.ctrl.get_employees():
-                    emp_map[str(e[0])] = str(e[1])
-            except Exception:
-                pass
-
-            for s in services:
-                bid = s[1]
-                svc_name = s[3]
-                price = s[4]
-                svc_date = str(s[5])
-
-                is_duplicate = any(
-                    str(bid) == str(l['bid']) and svc_name in l['action'] and svc_date in l['time']
-                    for l in unified_logs
-                )
-
-                if not is_duplicate:
-                    gname = guest_map.get(bid, "Unknown Guest")
-
-                    if len(s) > 6 and s[6]:
-                        emp_id_str = str(s[6])
-                        if emp_id_str.isdigit():
-                            staff_name = emp_map.get(emp_id_str, f"Staff ID {emp_id_str}")
-                        else:
-                            staff_name = emp_id_str
-                    else:
-                        staff_name = staff_map.get(bid, "System Admin")
-
-                    unified_logs.append({
-                        'bid': bid,
-                        'target': gname,
-                        'action': f"Service: {svc_name} (₱{price:,})",
-                        'staff': staff_name,
-                        'time': f"{svc_date} 00:00:00"
-                    })
-        except AttributeError:
-            # Backend not updated yet, don't crash
-            pass
+            logs = self.ctrl.get_unified_system_logs()
         except Exception as e:
-            print(f"Error merging historical services: {e}")
+            print(f"[SystemLogsTab] Error loading logs: {e}")
+            logs = []
 
-        unified_logs.sort(key=lambda x: x['time'], reverse=True)
-
-        for log in unified_logs:
+        for log in logs:
             r = self.t.rowCount()
             self.t.insertRow(r)
 
             bid = log['bid']
             try:
-                if bid and int(bid) > 0:
-                    bid_str = f"B{int(bid):05d}"
-                else:
-                    bid_str = "---"
+                bid_str = f"B{int(bid):05d}" if bid and int(bid) > 0 else "---"
             except (ValueError, TypeError):
                 bid_str = str(bid) if bid else "---"
 
@@ -713,6 +597,7 @@ class SystemLogsTab(QWidget):
             self.t.setItem(r, 4, QTableWidgetItem(log['time']))
 
 
+# ── History & Services Tab ────────────────────────────────────────────────────
 class HistoryAndServicesTab(QWidget):
     def __init__(self, ctrl):
         super().__init__()
@@ -724,39 +609,35 @@ class HistoryAndServicesTab(QWidget):
         self.inp = QLineEdit(placeholderText="e.g. 101")
         self.inp.setStyleSheet(INPUT_STYLE + " padding: 10px; font-size: 14px;")
         self.inp.textChanged.connect(self.search)
-
-        h.addWidget(l_lbl)
-        h.addWidget(self.inp)
-        h.addStretch()
+        h.addWidget(l_lbl); h.addWidget(self.inp); h.addStretch()
         l.addLayout(h)
 
         self.t_unified = QTableWidget(0, 8)
         self.t_unified.setHorizontalHeaderLabels(
-            ["Room", "Type", "Date", "Booking ID", "Guest Name", "Action / Service", "Duration", "Cost"])
+            ["Room", "Type", "Date", "Booking ID", "Guest Name", "Action / Service", "Duration", "Cost"]
+        )
         self.t_unified.setStyleSheet(TABLE_STYLE)
         make_table_readonly(self.t_unified)
         self.t_unified.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         l.addWidget(self.t_unified)
 
         self.all_services = []
-        self.all_history = []
+        self.all_history  = []
         self.load()
 
     def load(self):
-        # 🟢 SAFETY NET: Show a warning instead of crashing on startup if backend isn't updated
         try:
             self.all_services = self.ctrl.get_all_services() or []
-            self.all_history = self.ctrl.get_all_room_history() or []
+            self.all_history  = self.ctrl.get_all_room_history() or []
         except AttributeError:
             self.all_services = []
-            self.all_history = []
+            self.all_history  = []
             QMessageBox.warning(self, "Backend Update Required",
-                                "Please add 'get_all_room_history' to your c_admin.py and m_admin.py files!")
+                                "Please add 'get_all_room_history' to your AdminController.")
         except Exception as e:
             self.all_services = []
-            self.all_history = []
+            self.all_history  = []
             print(f"Error loading history: {e}")
-
         self.search()
 
     def search(self):
@@ -764,47 +645,41 @@ class HistoryAndServicesTab(QWidget):
         self.t_unified.setRowCount(0)
 
         unified_data = []
-        guest_map = {}
+        guest_map    = {}
 
         for h in self.all_history:
             room_num = str(h[0])
             guest_map[h[1]] = str(h[2])
-
             if rid and rid not in room_num.lower():
                 continue
-
             unified_data.append({
                 'sort_date': str(h[3]),
-                'room': room_num,
-                'type': 'Booking',
-                'date': str(h[3]),
-                'bid': f"B{h[1]:05d}",
-                'guest': str(h[2]),
-                'action': str(h[5]),
-                'duration': f"{h[4]} Days",
-                'cost': "---"
+                'room':      room_num,
+                'type':      'Booking',
+                'date':      str(h[3]),
+                'bid':       f"B{h[1]:05d}",
+                'guest':     str(h[2]),
+                'action':    str(h[5]),
+                'duration':  f"{h[4]} Days",
+                'cost':      "---",
             })
 
         for s in self.all_services:
             room_num = str(s[2])
-
             if rid and rid not in room_num.lower():
                 continue
-
             bid_int = s[1]
             bid_str = f"B{bid_int:05d}" if isinstance(bid_int, int) else str(bid_int)
-            gname = guest_map.get(bid_int, "Unknown")
-
             unified_data.append({
                 'sort_date': str(s[5]),
-                'room': room_num,
-                'type': 'Service',
-                'date': str(s[5]),
-                'bid': bid_str,
-                'guest': gname,
-                'action': str(s[3]),
-                'duration': "---",
-                'cost': f"₱{s[4]:,}"
+                'room':      room_num,
+                'type':      'Service',
+                'date':      str(s[5]),
+                'bid':       bid_str,
+                'guest':     guest_map.get(bid_int, "Unknown"),
+                'action':    str(s[3]),
+                'duration':  "---",
+                'cost':      f"₱{s[4]:,}",
             })
 
         unified_data.sort(key=lambda x: x['sort_date'], reverse=True)
@@ -843,6 +718,7 @@ class HistoryAndServicesTab(QWidget):
             self.t_unified.setItem(r, 7, cost_item)
 
 
+# ── Payment Report Tab ────────────────────────────────────────────────────────
 class PaymentReportTab(QWidget):
     def __init__(self, ctrl):
         super().__init__()
@@ -850,8 +726,8 @@ class PaymentReportTab(QWidget):
         self.setLayout(QVBoxLayout())
         self.t = QTableWidget(0, 10)
         self.t.setHorizontalHeaderLabels(
-            ["Date", "Booking ID", "Guest", "Room Charge", "Service Fee", "Penalties", "Total", "Method", "Staff",
-             "Remark"]
+            ["Date", "Booking ID", "Guest", "Room Charge", "Service Fee",
+             "Penalties", "Total", "Method", "Staff", "Remark"]
         )
         self.t.setStyleSheet(TABLE_STYLE)
         make_table_readonly(self.t)
@@ -861,7 +737,6 @@ class PaymentReportTab(QWidget):
 
     def load(self):
         self.t.setRowCount(0)
-        # 🟢 SAFETY NET added here too!
         try:
             payments = self.ctrl.get_all_payments() or []
         except Exception:
@@ -870,93 +745,72 @@ class PaymentReportTab(QWidget):
         for p in payments:
             r = self.t.rowCount()
             self.t.insertRow(r)
-
             processed_by = p[10] if len(p) > 10 else "---"
-            remarks = p[11] if len(p) > 11 else "Payment"
-
-            bid_str = f"B{p[1]:05d}" if isinstance(p[1], int) else str(p[1])
-
+            remarks      = p[11] if len(p) > 11 else "Payment"
+            bid_str      = f"B{p[1]:05d}" if isinstance(p[1], int) else str(p[1])
             try:
-                penalty = float(p[5]) - (float(p[3]) + float(p[4]))
-                penalty = max(0, penalty)
+                penalty = max(0, float(p[5]) - (float(p[3]) + float(p[4])))
             except Exception:
                 penalty = 0
 
             items = [
-                str(p[7]),
-                bid_str,
-                str(p[2]),
-                f"₱{int(p[3]):,}",
-                f"₱{int(p[4]):,}",
-                f"₱{int(penalty):,}",
-                f"₱{int(p[5]):,}",
-                str(p[6]),
-                str(processed_by),
-                str(remarks)
+                str(p[7]), bid_str, str(p[2]),
+                f"₱{int(p[3]):,}", f"₱{int(p[4]):,}",
+                f"₱{int(penalty):,}", f"₱{int(p[5]):,}",
+                str(p[6]), str(processed_by), str(remarks),
             ]
-
             for i, v in enumerate(items):
                 item = QTableWidgetItem(str(v))
                 if i == 5 and penalty > 0:
                     item.setForeground(Qt.GlobalColor.red)
                     from PyQt6.QtGui import QFont
-                    font = QFont()
-                    font.setBold(True)
+                    font = QFont(); font.setBold(True)
                     item.setFont(font)
                 self.t.setItem(r, i, item)
 
 
+# ── Export Report Dialog ──────────────────────────────────────────────────────
 class ExportReportDialog(QDialog):
     def __init__(self, parent, year, month, admin_name="Admin"):
         super().__init__(parent)
         self.setWindowTitle("Export Custom Report")
         self.setFixedSize(350, 340)
-
-        self.options = {}
-        self.generated_by = admin_name
+        self.options       = {}
+        self.generated_by  = admin_name
 
         l = QVBoxLayout(self)
         l.setContentsMargins(25, 25, 25, 25)
         l.setSpacing(15)
 
         period = f"{month} {year}" if month != "All" else f"Annual {year}"
-        l.addWidget(
-            QLabel(f"Report Period: {period}", styleSheet="font-weight: bold; font-size: 16px; color: #2C3E50;"))
-
-        # Show who is generating the report
-        lbl_by = QLabel(f"Generated by: {admin_name}", styleSheet="color: #E67E22; font-weight: bold; font-size: 12px;")
-        l.addWidget(lbl_by)
-
-        l.addWidget(QLabel("Select details to include in the PDF:", styleSheet="color: #7F8C8D; margin-bottom: 10px;"))
+        l.addWidget(QLabel(f"Report Period: {period}",
+                           styleSheet="font-weight: bold; font-size: 16px; color: #2C3E50;"))
+        l.addWidget(QLabel(f"Generated by: {admin_name}",
+                           styleSheet="color: #E67E22; font-weight: bold; font-size: 12px;"))
+        l.addWidget(QLabel("Select details to include in the PDF:",
+                           styleSheet="color: #7F8C8D; margin-bottom: 10px;"))
 
         self.chk_financial = QCheckBox("Financial Summary (Revenue)")
         self.chk_financial.setChecked(True)
         self.chk_financial.setStyleSheet("font-size: 14px; padding: 5px; color: #2C3E50;")
-
         self.chk_rooms = QCheckBox("Room Utilization & Analytics")
         self.chk_rooms.setChecked(True)
         self.chk_rooms.setStyleSheet("font-size: 14px; padding: 5px; color: #2C3E50;")
-
         self.chk_logs = QCheckBox("Itemized Transaction Logs")
         self.chk_logs.setStyleSheet("font-size: 14px; padding: 5px; color: #2C3E50;")
 
         l.addWidget(self.chk_financial)
         l.addWidget(self.chk_rooms)
         l.addWidget(self.chk_logs)
-
         l.addStretch()
 
         btn_box = QHBoxLayout()
         btn_cancel = QPushButton("Cancel")
-        btn_cancel.setStyleSheet(
-            "padding: 10px; background: #95A5A6; color: white; border-radius: 5px; font-weight: bold;")
+        btn_cancel.setStyleSheet("padding: 10px; background: #95A5A6; color: white; border-radius: 5px; font-weight: bold;")
         btn_cancel.clicked.connect(self.reject)
-
         btn_export = QPushButton("Generate PDF")
-        btn_export.setStyleSheet(
-            "padding: 10px; background: #E67E22; color: white; border-radius: 5px; font-weight: bold;")
+        btn_export.setStyleSheet("padding: 10px; background: #E67E22; color: white; border-radius: 5px; font-weight: bold;")
         btn_export.clicked.connect(self.confirm_export)
-
         btn_box.addWidget(btn_cancel)
         btn_box.addWidget(btn_export)
         l.addLayout(btn_box)
@@ -964,27 +818,26 @@ class ExportReportDialog(QDialog):
     def confirm_export(self):
         self.options = {
             'financial': self.chk_financial.isChecked(),
-            'rooms': self.chk_rooms.isChecked(),
-            'logs': self.chk_logs.isChecked()
+            'rooms':     self.chk_rooms.isChecked(),
+            'logs':      self.chk_logs.isChecked(),
         }
-
         if not any(self.options.values()):
             QMessageBox.warning(self, "Warning", "Please select at least one detail to export.")
             return
-
         self.accept()
 
 
+# ── Admin Summary (Analytics) ─────────────────────────────────────────────────
 class AdminSummary(QWidget):
     def __init__(self, ctrl, admin_name="Admin"):
         super().__init__()
-        self.ctrl = ctrl
+        self.ctrl       = ctrl
         self.admin_name = admin_name
         self.available_data = {}
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet("background-color: #F4F6F9;")
-        self.figures = {}
-        self.plt = None
+        self.figures     = {}
+        self.plt         = None
         self.MaxNLocator = None
         self.main_layout = QVBoxLayout()
         self.main_layout.setContentsMargins(20, 20, 20, 20)
@@ -998,21 +851,21 @@ class AdminSummary(QWidget):
 
     def load_charts_module(self):
         try:
-            import matplotlib
             from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FC
             from matplotlib.figure import Figure as Fig
             import matplotlib.pyplot as plt
             from matplotlib.ticker import MaxNLocator
-            self.plt = plt
+            self.plt         = plt
             self.FigureCanvas = FC
-            self.Figure = Fig
-            self.MaxNLocator = MaxNLocator
+            self.Figure       = Fig
+            self.MaxNLocator  = MaxNLocator
         except ImportError:
             pass
 
     def setup_header(self):
         h = QHBoxLayout()
-        h.addWidget(QLabel("Analytics Dashboard", styleSheet="font-size: 24px; font-weight: 800; color: #2C3E50;"))
+        h.addWidget(QLabel("Analytics Dashboard",
+                           styleSheet="font-size: 24px; font-weight: 800; color: #2C3E50;"))
         h.addStretch()
         self.cb_year = QComboBox()
         self.cb_year.setStyleSheet(INPUT_STYLE)
@@ -1022,11 +875,10 @@ class AdminSummary(QWidget):
         self.cb_month.currentIndexChanged.connect(self.load_data)
 
         btn_pdf = QPushButton("Export PDF")
-        btn_pdf.setStyleSheet(
-            "background: #E67E22; color: white; padding: 5px 15px; font-weight: bold; border-radius: 5px;")
+        btn_pdf.setStyleSheet("background: #E67E22; color: white; padding: 5px 15px; font-weight: bold; border-radius: 5px;")
         btn_pdf.clicked.connect(self.export_pdf)
 
-        h.addWidget(QLabel("Year:", styleSheet="color:#555; font-weight:bold;"))
+        h.addWidget(QLabel("Year:",  styleSheet="color:#555; font-weight:bold;"))
         h.addWidget(self.cb_year)
         h.addWidget(QLabel("Month:", styleSheet="color:#555; font-weight:bold;"))
         h.addWidget(self.cb_month)
@@ -1044,12 +896,10 @@ class AdminSummary(QWidget):
         layout.addWidget(self.lbl_month_name)
         layout.addStretch()
         self.lbl_room_rev = QLabel("Room Rev: ₱0")
-        self.lbl_room_rev.setStyleSheet(
-            "font-size: 14px; font-weight: bold; color: #27AE60; background: #EAFAF1; padding: 8px; border-radius: 5px;")
+        self.lbl_room_rev.setStyleSheet("font-size: 14px; font-weight: bold; color: #27AE60; background: #EAFAF1; padding: 8px; border-radius: 5px;")
         layout.addWidget(self.lbl_room_rev)
         self.lbl_svc_rev = QLabel("Service Rev: ₱0")
-        self.lbl_svc_rev.setStyleSheet(
-            "font-size: 14px; font-weight: bold; color: #F39C12; background: #FEF9E7; padding: 8px; border-radius: 5px;")
+        self.lbl_svc_rev.setStyleSheet("font-size: 14px; font-weight: bold; color: #F39C12; background: #FEF9E7; padding: 8px; border-radius: 5px;")
         layout.addWidget(self.lbl_svc_rev)
         self.lbl_total_rev = QLabel("TOTAL: ₱0")
         self.lbl_total_rev.setStyleSheet("font-size: 20px; font-weight: 800; color: #2C3E50; margin-left: 20px;")
@@ -1066,7 +916,8 @@ class AdminSummary(QWidget):
         self.lbl_total_rev.setText(f"TOTAL: ₱{total:,}")
 
     def setup_content(self):
-        scroll = QScrollArea()
+        from PyQt6.QtWidgets import QScrollArea
+        scroll  = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("border: none; background: transparent;")
         content = QWidget()
@@ -1089,10 +940,7 @@ class AdminSummary(QWidget):
             return
         self.cb_year.addItems(years)
         curr = str(datetime.now().year)
-        if curr in years:
-            self.cb_year.setCurrentText(curr)
-        else:
-            self.cb_year.setCurrentIndex(0)
+        self.cb_year.setCurrentText(curr if curr in years else self.cb_year.itemText(0))
         self.cb_year.blockSignals(False)
         self.on_year_changed(self.cb_year.currentText())
 
@@ -1101,180 +949,136 @@ class AdminSummary(QWidget):
         self.cb_month.clear()
         self.cb_month.addItem("All", userData=None)
         if year in self.available_data:
-            import calendar
             for m in self.available_data[year]:
                 self.cb_month.addItem(calendar.month_name[int(m)], userData=m)
         curr = f"{datetime.now().month:02d}"
-        idx = self.cb_month.findData(curr)
-        if idx >= 0:
-            self.cb_month.setCurrentIndex(idx)
-        else:
-            self.cb_month.setCurrentIndex(0)
+        idx  = self.cb_month.findData(curr)
+        self.cb_month.setCurrentIndex(idx if idx >= 0 else 0)
         self.cb_month.blockSignals(False)
         self.load_data()
 
     def load_data(self):
         if not self.plt: return
-        year = self.cb_year.currentText()
+        year      = self.cb_year.currentText()
         month_idx = self.cb_month.currentData()
         if not year: return
 
         if month_idx:
-            import calendar
-            last = calendar.monthrange(int(year), int(month_idx))[1]
-            s_date = f"{year}-{month_idx}-01"
-            e_date = f"{year}-{month_idx}-{last}"
+            last    = calendar.monthrange(int(year), int(month_idx))[1]
+            s_date  = f"{year}-{month_idx}-01"
+            e_date  = f"{year}-{month_idx}-{last}"
         else:
             s_date = f"{year}-01-01"
             e_date = f"{year}-12-31"
 
-        data = self.ctrl.get_analytics(s_date, e_date)
+        data  = self.ctrl.get_analytics(s_date, e_date)
         total = data['rev_room'] + data['rev_svc']
         self.update_financial_banner(data['rev_room'], data['rev_svc'], total)
 
         while self.chart_grid.count():
             self.chart_grid.takeAt(0).widget().deleteLater()
 
-        # 1. Pie Chart
         f1 = self.frame("Revenue Breakdown")
         self.pie(f1, data['rev_room'], data['rev_svc'])
         self.chart_grid.addWidget(f1, 0, 0)
 
-        # 2. Rooms Bar Chart
         f2 = self.frame("Most Used Room Types")
         self.bar_rooms(f2, data['room_counts'])
         self.chart_grid.addWidget(f2, 0, 1)
 
-        # 🟢 NEW: 3. Dynamic Line Chart
         f3 = self.frame("Revenue Trend Over Time")
         self.line_trend(f3, year, month_idx)
-        self.chart_grid.addWidget(f3, 1, 0, 1, 2)  # Spans both columns
+        self.chart_grid.addWidget(f3, 1, 0, 1, 2)
 
-        # 4. Services Bar Chart
         f4 = self.frame("Top Services Offered")
         self.bar_services(f4, data['svc_counts'])
-        self.chart_grid.addWidget(f4, 2, 0, 1, 2)  # Spans both columns
+        self.chart_grid.addWidget(f4, 2, 0, 1, 2)
 
     def export_pdf(self):
-        # 🟢 SAFETY NET: Instead of crashing on clicking Export, pop up a clean error box!
-        year = self.cb_year.currentText()
+        year  = self.cb_year.currentText()
         month = self.cb_month.currentData() or "All"
-
-        dlg = ExportReportDialog(self, year, self.cb_month.currentText(), self.admin_name)
-
+        dlg   = ExportReportDialog(self, year, self.cb_month.currentText(), self.admin_name)
         if dlg.exec() == 1:
             try:
                 s, m = self.ctrl.export_report(year, month, dlg.options, dlg.generated_by)
-
-                msg = QMessageBox(self)
-                msg.setWindowTitle("Export")
-                msg.setText(m)
+                msg  = QMessageBox(self)
+                msg.setWindowTitle("Export"); msg.setText(m)
                 msg.setIcon(QMessageBox.Icon.Information if s else QMessageBox.Icon.Warning)
-                msg.setStyleSheet(MESSAGEBOX_STYLE)
-                msg.exec()
+                msg.setStyleSheet(MESSAGEBOX_STYLE); msg.exec()
             except TypeError:
                 QMessageBox.critical(self, "Backend Update Required",
-                                     "You need to update 'export_report' inside your c_admin.py file to accept the 'options' argument!\n\n"
-                                     "Change it to:\ndef export_report(self, year, month, options=None):")
+                                     "Update 'export_report' in c_admin.py to accept the 'options' argument.")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to export report: {str(e)}")
 
-    def frame(self, t):
+    # ── Chart helpers ─────────────────────────────────────────────────────────
+
+    def frame(self, title):
         f = QFrame(styleSheet="background: white; border: 1px solid #BDC3C7; border-radius: 8px;")
         f.setMinimumHeight(350)
         l = QVBoxLayout(f)
-        l.addWidget(QLabel(t, styleSheet="font-weight:bold; color:#2C3E50; border:none;"))
+        l.addWidget(QLabel(title, styleSheet="font-weight:bold; color:#2C3E50; border:none;"))
         return f
 
     def pie(self, f, r, s):
-        if r == 0 and s == 0: f.layout().addWidget(QLabel("No Revenue Data")); return
+        if r == 0 and s == 0:
+            f.layout().addWidget(QLabel("No Revenue Data")); return
         fig = self.Figure(figsize=(4, 4), dpi=100)
-        ax = fig.add_subplot(111)
-
-        # 🟢 UPDATED: Changed 'Room Rev' and 'Svc Rev' to their proper names
+        ax  = fig.add_subplot(111)
         ax.pie([r, s], labels=['Room ', 'Service '], autopct='%1.1f%%', colors=['#2ECC71', '#F1C40F'])
+        c = self.FigureCanvas(fig); f.layout().addWidget(c); c.draw()
 
-        c = self.FigureCanvas(fig)
-        f.layout().addWidget(c)
-        c.draw()
-
-    # 🟢 NEW: Handles both daily (month view) and monthly (annual view)
     def line_trend(self, f, year, month_idx):
         fig = self.Figure(figsize=(8, 3.5), dpi=100)
-        ax = fig.add_subplot(111)
-
+        ax  = fig.add_subplot(111)
         if month_idx:
-            # Daily view for a specific month
-            data = self.ctrl.get_daily_revenue(year, int(month_idx))
-            x_vals = [d['day'] for d in data]
+            data   = self.ctrl.get_daily_revenue(year, int(month_idx))
+            x_vals = [d['day']       for d in data]
             y_vals = [d['total_rev'] for d in data]
             ax.set_xlabel("Day of Month")
         else:
-            # Monthly view for the whole year
-            data = self.ctrl.get_monthly_revenue(year)
+            data   = self.ctrl.get_monthly_revenue(year)
             x_vals = [d['month_name'] for d in data]
-            y_vals = [d['total_rev'] for d in data]
+            y_vals = [d['total_rev']  for d in data]
 
         ax.plot(x_vals, y_vals, marker='o', color='#E67E22', linewidth=2.5)
         ax.fill_between(x_vals, y_vals, alpha=0.1, color='#E67E22')
         ax.set_ylabel("Revenue (₱)")
         ax.grid(axis='y', linestyle='--', alpha=0.7)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
         fig.tight_layout()
-
-        c = self.FigureCanvas(fig)
-        f.layout().addWidget(c)
-        c.draw()
+        c = self.FigureCanvas(fig); f.layout().addWidget(c); c.draw()
 
     def bar_rooms(self, f, d):
         if not d: f.layout().addWidget(QLabel("No Data")); return
         fig = self.Figure(figsize=(4, 4), dpi=100)
-        ax = fig.add_subplot(111)
+        ax  = fig.add_subplot(111)
         ax.bar(d.keys(), d.values(), color='#3498DB')
         ax.set_ylabel("Bookings Count")
         if self.MaxNLocator: ax.yaxis.set_major_locator(self.MaxNLocator(integer=True))
-
-        # 🟢 Cleaned up design
         ax.grid(axis='y', linestyle='--', alpha=0.7)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
         fig.tight_layout()
-
-        c = self.FigureCanvas(fig)
-        f.layout().addWidget(c)
-        c.draw()
+        c = self.FigureCanvas(fig); f.layout().addWidget(c); c.draw()
 
     def bar_services(self, f, d):
         if not d: f.layout().addWidget(QLabel("No Data")); return
-        fig = self.Figure(figsize=(8, 4), dpi=100)
-        ax = fig.add_subplot(111)
-
-        # 🟢 Sort items from highest to lowest sales
-        sorted_d = dict(sorted(d.items(), key=lambda item: item[1], reverse=True))
-
+        fig        = self.Figure(figsize=(8, 4), dpi=100)
+        ax         = fig.add_subplot(111)
+        sorted_d   = dict(sorted(d.items(), key=lambda item: item[1], reverse=True))
         ax.bar(sorted_d.keys(), sorted_d.values(), color='#9B59B6')
         ax.set_ylabel("Quantity Sold")
         if self.MaxNLocator: ax.yaxis.set_major_locator(self.MaxNLocator(integer=True))
-
-        # 🟢 Fix overlapping labels by rotating them
         ax.tick_params(axis='x', rotation=25, labelsize=9)
-
-        # 🟢 Cleaned up design
         ax.grid(axis='y', linestyle='--', alpha=0.7)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
         fig.tight_layout()
-
-        c = self.FigureCanvas(fig)
-        f.layout().addWidget(c)
-        c.draw()
+        c = self.FigureCanvas(fig); f.layout().addWidget(c); c.draw()
 
     def refresh_data(self):
         self.populate_filters()
 
     def set_annual_view(self):
-        current_year = str(datetime.now().year)
-        self.cb_year.setCurrentText(current_year)
+        self.cb_year.setCurrentText(str(datetime.now().year))
         self.cb_month.setCurrentIndex(0)
         self.load_data()

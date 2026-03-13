@@ -42,11 +42,7 @@ class StaffController:
     # ── Services catalogue ────────────────────────────────────────────────────
 
     def get_available_services(self):
-        """
-        Return the services list with an availability flag.
-        Breakfast availability (cut-off 11:00) is determined here in the
-        controller, NOT in the view.
-        """
+
         current_hour = datetime.now().hour
         result = []
         for svc, price in self.SERVICES:

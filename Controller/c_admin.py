@@ -15,11 +15,7 @@ class AdminController:
 
     @staticmethod
     def format_card_number(card_num, method):
-        """
-        Mask a card number for display.
-        Credit Card  → **** **** **** 1234
-        Debit Card   → **** **** 1234
-        """
+
         if not card_num or card_num == 'None' or str(card_num).strip() == '':
             return "N/A"
 

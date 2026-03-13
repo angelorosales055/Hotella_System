@@ -117,9 +117,14 @@ class StaffModel:
         return self.db.update_booking_status(bid_int, new_status)
 
     def create_booking_final(self, d, room_id, staff_name):
+        # 🟢 FIX: Check for both lowercase and capitalized keys from the UI
         name = d.get('name') or d.get('Name', '')
+        email = d.get('email') or d.get('Email', '')
+        phone = d.get('phone') or d.get('Phone', '')
+        address = d.get('address') or d.get('Address', '')
+
         raw_bid = self.db.insert_booking_full(
-            name, d.get('email'), d.get('phone'), d.get('address'),
+            name, email, phone, address,
             d['room_type'], d['date'], d['days'], d['total_price'],
             d['guests'], staff_name
         )

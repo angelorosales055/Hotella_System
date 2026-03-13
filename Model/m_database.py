@@ -54,21 +54,30 @@ class Database:
         if not c:
             return
         try:
+            # 🟢 UPDATED: Tables are now ordered logically (Parents first) and include FK Constraints
             ddl = [
-                "CREATE TABLE IF NOT EXISTS users (username VARCHAR(50) PRIMARY KEY, password VARCHAR(255), role VARCHAR(20), employee_id INT)",
-                "CREATE TABLE IF NOT EXISTS bookings (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100), email VARCHAR(100), phone VARCHAR(20), address VARCHAR(255), room_type VARCHAR(50), date VARCHAR(20), days INT, price INT, status VARCHAR(50), guests_count INT DEFAULT 1, created_by VARCHAR(100) DEFAULT '---')",
-                "CREATE TABLE IF NOT EXISTS rooms (id INT AUTO_INCREMENT PRIMARY KEY, room_number VARCHAR(10) UNIQUE, description VARCHAR(100), status VARCHAR(20) DEFAULT 'Vacant', assigned_employee_id INT)",
-                "CREATE TABLE IF NOT EXISTS services (id INT AUTO_INCREMENT PRIMARY KEY, booking_id INT, room_number VARCHAR(10), service_name VARCHAR(100), price INT, date VARCHAR(20), employee_id INT, quantity INT DEFAULT 1)",
-                "CREATE TABLE IF NOT EXISTS transactions (id INT AUTO_INCREMENT PRIMARY KEY, booking_id INT, room_number VARCHAR(10), date_confirmed VARCHAR(20))",
-                "CREATE TABLE IF NOT EXISTS payments (id INT AUTO_INCREMENT PRIMARY KEY, booking_id INT, customer_name VARCHAR(100), room_total INT, service_total INT, grand_total INT, method VARCHAR(50), date_paid VARCHAR(20), amount_paid INT DEFAULT 0, card_number VARCHAR(50), processed_by VARCHAR(100) DEFAULT '---', remarks VARCHAR(50) DEFAULT 'Payment')",
-                "CREATE TABLE IF NOT EXISTS housekeeping_logs (id INT AUTO_INCREMENT PRIMARY KEY, room_number VARCHAR(10), action VARCHAR(100), date_time VARCHAR(20))",
-                "CREATE TABLE IF NOT EXISTS booking_logs (id INT AUTO_INCREMENT PRIMARY KEY, booking_id INT, guest_name VARCHAR(100), action_type VARCHAR(50), timestamp VARCHAR(30), performed_by VARCHAR(100) DEFAULT '---')",
+                # --- 1. BASE TABLES (No dependencies) ---
                 "CREATE TABLE IF NOT EXISTS employees (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100), role VARCHAR(50), contact VARCHAR(50), status VARCHAR(20) DEFAULT 'Available')",
+                "CREATE TABLE IF NOT EXISTS bookings (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100), email VARCHAR(100), phone VARCHAR(20), address VARCHAR(255), room_type VARCHAR(50), date VARCHAR(20), days INT, price INT, status VARCHAR(50), guests_count INT DEFAULT 1, created_by VARCHAR(100) DEFAULT '---')",
+
+                # --- 2. LEVEL 1 DEPENDENCIES ---
+                "CREATE TABLE IF NOT EXISTS users (username VARCHAR(50) PRIMARY KEY, password VARCHAR(255), role VARCHAR(20), employee_id INT, FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE)",
+                "CREATE TABLE IF NOT EXISTS rooms (id INT AUTO_INCREMENT PRIMARY KEY, room_number VARCHAR(10) UNIQUE, description VARCHAR(100), status VARCHAR(20) DEFAULT 'Vacant', assigned_employee_id INT, FOREIGN KEY (assigned_employee_id) REFERENCES employees(id) ON DELETE SET NULL)",
+
+                # --- 3. LEVEL 2 DEPENDENCIES ---
+                "CREATE TABLE IF NOT EXISTS services (id INT AUTO_INCREMENT PRIMARY KEY, booking_id INT, room_number VARCHAR(10), service_name VARCHAR(100), price INT, date VARCHAR(20), employee_id INT, quantity INT DEFAULT 1, FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE, FOREIGN KEY (room_number) REFERENCES rooms(room_number) ON DELETE CASCADE ON UPDATE CASCADE)",
+                "CREATE TABLE IF NOT EXISTS transactions (id INT AUTO_INCREMENT PRIMARY KEY, booking_id INT, room_number VARCHAR(10), date_confirmed VARCHAR(20), FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE, FOREIGN KEY (room_number) REFERENCES rooms(room_number) ON DELETE CASCADE ON UPDATE CASCADE)",
+                "CREATE TABLE IF NOT EXISTS payments (id INT AUTO_INCREMENT PRIMARY KEY, booking_id INT, customer_name VARCHAR(100), room_total INT, service_total INT, grand_total INT, method VARCHAR(50), date_paid VARCHAR(20), amount_paid INT DEFAULT 0, card_number VARCHAR(50), processed_by VARCHAR(100) DEFAULT '---', remarks VARCHAR(50) DEFAULT 'Payment', FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE)",
+                "CREATE TABLE IF NOT EXISTS housekeeping_logs (id INT AUTO_INCREMENT PRIMARY KEY, room_number VARCHAR(10), action VARCHAR(100), date_time VARCHAR(20), FOREIGN KEY (room_number) REFERENCES rooms(room_number) ON DELETE CASCADE ON UPDATE CASCADE)",
+                "CREATE TABLE IF NOT EXISTS booking_logs (id INT AUTO_INCREMENT PRIMARY KEY, booking_id INT, guest_name VARCHAR(100), action_type VARCHAR(50), timestamp VARCHAR(30), performed_by VARCHAR(100) DEFAULT '---', FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE)"
             ]
             for sql in ddl:
                 c.execute(sql)
+
             c.execute("INSERT IGNORE INTO users (username, password, role) VALUES ('admin','admin123','admin')")
             self.conn.commit()
+
+            # The migration script safely ignores tables if they are already converted
             self._migrate_booking_id_columns(c)
         finally:
             c.close()
